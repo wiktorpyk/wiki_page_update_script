@@ -1,4 +1,6 @@
 import re
+import pyperclip
+import time
 
 template = """
 {{Infobox device
@@ -185,7 +187,7 @@ template_empty = """
 <!-- PostmarketOS -->
 | type          = CHANGE_ME <!-- desktop, laptop, convertible, server, tablet, handset, watch, embedded, vm, see [[Device types]] -->
 | pmoskernel    = <!-- Kernel version used in postmarketOS --> 
-| whet_dhry     = <!-- UnixBench score, see [[Unixbench]] -->
+| whet_dhry     = 0.0 <!-- UnixBench score, see [[Unixbench]] -->
 | genericdevice = <!-- Name of the generic port page -->
 | optionalgenericdevice = no <!-- yes to change the genericdevice box into an optional genericdevice box -->
 | kernelpackage = <!-- {{Kernel package|device-codename|category}} -->
@@ -215,56 +217,56 @@ For each of the following questions about device functionality, please respond a
 -->
 
 <!-- Main Features -->
-| status_flashing = <!-- Flashing with pmbootstrap -->
-| status_usbnet   = <!-- USB networking -->
-| status_emmc     = <!-- Internal storage -->
-| status_sdcard   = <!-- SD card support -->
-| status_battery  = <!-- Battery percentage/charging -->
-| status_screen   = <!-- Built-in display/embedded display connector -->
-| status_touch    = <!-- Touchscreen -->
-| status_keyboard = <!-- Build in Physical Keyboard -->
-| status_touchpad = <!-- Build in Physical Touchpad -->
-| status_stylus   = <!-- Stylus/digital pen -->
+| status_flashing = - <!-- Flashing with pmbootstrap -->
+| status_usbnet   = - <!-- USB networking -->
+| status_emmc     = - <!-- Internal storage -->
+| status_sdcard   = - <!-- SD card support -->
+| status_battery  = - <!-- Battery percentage/charging -->
+| status_screen   = - <!-- Built-in display/embedded display connector -->
+| status_touch    = - <!-- Touchscreen -->
+| status_keyboard = - <!-- Build in Physical Keyboard -->
+| status_touchpad = - <!-- Build in Physical Touchpad -->
+| status_stylus   = - <!-- Stylus/digital pen -->
 
 
 <!-- Multimedia Features -->
-| status_3d     = <!-- 3D acceleration -->
-| status_dvb    = <!-- TV tuner -->
-| status_audio  = <!-- Speakers/headphones -->
-| status_camera = <!-- Rear/front cameras -->
-| status_cameraflash = <!-- Flash/torch -->
-| status_irtx   = <!-- IR transmitter -->
-| status_irrx   = <!-- IR receiver -->
+| status_3d     = - <!-- 3D acceleration -->
+| status_dvb    = - <!-- TV tuner -->
+| status_audio  = - <!-- Speakers/headphones -->
+| status_camera = - <!-- Rear/front cameras -->
+| status_cameraflash = - <!-- Flash/torch -->
+| status_irtx   = - <!-- IR transmitter -->
+| status_irrx   = - <!-- IR receiver -->
 
 
 <!-- Connectivity Features -->
-| status_wifi  = <!-- Wi-Fi -->
-| status_bluetooth = <!-- Bluetooth -->
-| status_ethernet = <!-- Wired Ethernet -->
-| status_gps   = <!-- GPS -->
-| status_nfc   = <!-- NFC -->
-| status_calls = <!-- Cellular calls -->
-| status_sms   = <!-- SMS -->
-| status_mobiledata = <!-- Mobile data -->
+| status_wifi  = - <!-- Wi-Fi -->
+| status_bluetooth = - <!-- Bluetooth -->
+| status_ethernet = - <!-- Wired Ethernet -->
+| status_gps   = - <!-- GPS -->
+| status_nfc   = - <!-- NFC -->
+| status_calls = - <!-- Cellular calls -->
+| status_sms   = - <!-- SMS -->
+| status_mobiledata = - <!-- Mobile data -->
 
 
 <!-- Miscellaneous Features -->
-| status_fde  = <!-- Full Disk Encryption -->
-| status_usba = <!-- USB-A ports -->
-| status_sata = <!-- SATA -->
-| status_otg  = <!-- USB OTG -->
-| status_hdmidp = <!-- HDMI/DisplayPort -->
+| status_fde  = - <!-- Full Disk Encryption -->
+| status_usba = - <!-- USB-A ports -->
+| status_sata = - <!-- SATA -->
+| status_otg  = - <!-- USB OTG -->
+| status_hdmidp = - <!-- HDMI/DisplayPort -->
 
 
 <!-- Sensors -->
-| status_accel     = <!-- Accelerometer -->
-| status_magnet    = <!-- Magnetometer -->
-| status_light     = <!-- Ambient light -->
-| status_proximity = <!-- Proximity sensor -->
-| status_hall      = <!-- Hall effect -->
-| status_haptics   = <!-- Vibration/haptics -->
-| status_barometer = <!-- Barometer -->
-| status_powersensor = <!-- Power sensor -->
+| status_accel     = - <!-- Accelerometer -->
+| status_magnet    = - <!-- Magnetometer -->
+| status_light     = - <!-- Ambient light -->
+| status_proximity = - <!-- Proximity sensor -->
+| status_hall      = - <!-- Hall effect -->
+| status_haptics   = - <!-- Vibration/haptics -->
+| status_barometer = - <!-- Barometer -->
+| status_powersensor = - <!-- Power sensor -->
 
 
 <!-- U-Boot (optional, for devices running U-Boot) -->
@@ -301,7 +303,11 @@ def parse_wiki_template(template_text):
             # Handle empty values
             if not value:
                 value = None
-                
+            
+            # take out any newlines
+            try:
+                value = value.replace('\n', ' ').strip()
+            except AttributeError: continue
             result[key] = value
         else:
             # Optional: debug print or log unrecognized lines
@@ -317,9 +323,16 @@ def fill_template(template, template_empty, parsed_data):
             if variable_name in parsed_data:
                 value = parsed_data[variable_name]
                 if value is None:
-                    value = template_empty.splitlines()[i]
-                    output += value + "\n"
+                    if variable_name.startswith("status_"):
+                        # If the variable is a status variable and not found, fill with a space
+                        output += line.replace(f"{{{variable_name}}}", " ") + "\n"
+                    else:
+                        # If the variable is not a status variable, use the empty template value
+                        value = template_empty.splitlines()[i]
+                        output += value + "\n"
                 else:
+                    # remove comments from the value
+                    value = re.sub(r'<!--.*?-->', '', value).strip()
                     output += line.replace(f"{{{variable_name}}}", value) + "\n"
             else:
                 # If the variable is not found in parsed_data, use the empty template value
@@ -329,55 +342,18 @@ def fill_template(template, template_empty, parsed_data):
             output += line + "\n"
     return output.strip()
 
-wiki_template = """
-{{Infobox device
-| manufacturer = BQ
-| name = Aquaris X5
-| codename = bq-paella
-| image = File:P_20200429_093001.jpg|thumb|133px
-| imagecaption = BQ Aquaris X5 running Plasma Mobile on postmarketOS mainline
-| releaseyear = 2015
-| category = community
-| originalsoftware = Android (CyanogenOS)
-| originalversion = 5.1 (CyanogenOS 12.1)
-| chipset = Qualcomm Snapdragon 412 (MSM8916v2)
-| cpu = Quad-core 1.4 GHz Cortex-A53
-| gpu = Adreno 306
-| storage = 16GB / 32GB
-| display = 720 x 1280 (IPS LCD capacitive touchscreen, 16M colors)
-| memory = 2GB / 3GB
-| architecture = aarch64
-| type = handset
-| status_usbnet = Y
-| status_flashing = Y
-| status_touch = Y
-| status_screen = Y
-| status_wifi = Y
-| status_xwayland = Y
-| status_fde = Y
-| status_battery = Y
-| status_3d = Y
-| status_accel = Y
-| status_audio = Y
-| status_bluetooth = Y
-| status_camera =
-| status_gps = Y
-| status_mobiledata = Y
-| status_sms = Y
-| status_calls = Y
-| status_nfc = -
-| status_irtx = -
-| status =
-| genericdevice=Generic MSM8916 (qcom-msm8916)
-| optionalgenericdevice = yes
-| booting = yes
-| packaged = yes
-| pmoskernel = Mainline
-| whet_dhry = 913.7 <!-- NOTE: RESULT WITH FDE, PLEASE RE-TEST AND SUMBIT W/O IT; ALSO RE-TEST AFTER CPU WILL FINALLY RUN ON 1.4 GHZ -->
-| status_otg = Y
-}}
-"""
 
-parsed_data = parse_wiki_template(wiki_template)
-filled_template = fill_template(template, template_empty, parsed_data)
-print(filled_template)
+while True:
+    current_clipboard_content = pyperclip.paste()
+    print("New content detected in clipboard. Processing...")
+    wiki_template = current_clipboard_content
+
+    parsed_data = parse_wiki_template(wiki_template)
+    filled_template = fill_template(template, template_empty, parsed_data)
+
+    # Put the result into the clipboard
+    pyperclip.copy(filled_template)
+    print("Processed template copied to clipboard.")
+    last_clipboard_content = filled_template # Update to the content we just placed
+    
+    input()
