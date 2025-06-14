@@ -302,7 +302,7 @@ def parse_wiki_template(template_text):
             
             # Handle empty values
             if not value:
-                value = None
+                value = ""
             
             # take out any newlines
             try:
@@ -322,7 +322,7 @@ def fill_template(template, template_empty, parsed_data):
             variable_name = re.search(r'\{(\w+)\}', line).group(0)[1:-1]
             if variable_name in parsed_data:
                 value = parsed_data[variable_name]
-                if value is None:
+                if value is "":
                     if variable_name.startswith("status_"):
                         # If the variable is a status variable and not found, fill with a space
                         output += line.replace(f"{{{variable_name}}}", " ") + "\n"
@@ -344,16 +344,12 @@ def fill_template(template, template_empty, parsed_data):
 
 
 while True:
-    current_clipboard_content = pyperclip.paste()
-    print("New content detected in clipboard. Processing...")
-    wiki_template = current_clipboard_content
+    wiki_template_input = pyperclip.paste()
 
-    parsed_data = parse_wiki_template(wiki_template)
+    parsed_data = parse_wiki_template(wiki_template_input)
+    # Use the SOC specific templates for filling
     filled_template = fill_template(template, template_empty, parsed_data)
 
     # Put the result into the clipboard
     pyperclip.copy(filled_template)
-    print("Processed template copied to clipboard.")
-    last_clipboard_content = filled_template # Update to the content we just placed
-    
-    input()
+    input("Press Enter")
